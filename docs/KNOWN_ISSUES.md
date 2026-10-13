@@ -16,10 +16,10 @@ Inspect `Get-Command swift,xcodebuild -ErrorAction SilentlyContinue`; neither to
 Build signed sandboxed targets and observe Finder routing on minimum/latest macOS.
 
 ### Actual
-Only local source, project structure and documentation checks are possible. No positive or negative routing result is known.
+Only local source, project structure and documentation checks have been verified in this session. The Codemagic workflow is prepared with readiness CODE_COMPLETE / CI_PENDING / REMOTE_MAC_PENDING; its first real macOS compile is pending. No positive or negative routing result is known.
 
 ### Proposed fix
-Open this repository on a Mac with a Swift 6-capable Xcode and run QUICKLOOK_TEST_PLAN.md. A Mac CI runner can first validate compilation but cannot replace interactive Finder testing. Recommended: build and run locally on a Mac, then obtain the second OS test environment. Keep Phase 01 Blocked and production phases Not Started until evidence supports ADR-001.
+Connect the verified GitHub repository to Codemagic and follow CI.md for an unsigned real macOS compile without Apple credentials. After CI passes, open the repository on a Mac with a Swift 6-capable Xcode and follow QUICKLOOK_TEST_PLAN.md for signed interactive Finder testing, including the second OS environment. Keep Phase 01 Blocked and production phases Not Started until evidence supports ADR-001.
 
 ## RISK-001 — candidate type declarations
 Severity: Medium

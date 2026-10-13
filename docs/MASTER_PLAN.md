@@ -42,6 +42,8 @@ Sandbox, extension signing, IAP verification/restore, privacy disclosures and cu
 ## Phase list
 Progress is completed primary task checkboxes / primary tasks, rounded to the nearest percent. It is not an acceptance pass. Testing checkboxes and all acceptance criteria must also pass before Complete.
 
+Phase 01 readiness: **CODE_COMPLETE** for Windows-local planning and CI configuration; **CI_PENDING** for the first real Codemagic compile/tests; **REMOTE_MAC_PENDING** for signed Finder validation. These are readiness markers, not replacements for the phase's Blocked status or claims that the production application is code-complete. Production renderers remain blocked and unstarted. See [CI audit and troubleshooting](CI.md).
+
 | Phase | Name | Dependency | Status | Progress | Major deliverables |
 |---|---|---|---|---:|---|
 | 00 | [Project Discovery](phases/PHASE_00_PROJECT_DISCOVERY.md) | None | Complete | 100% | docs/MASTER_PLAN.md; docs/CURRENT_STATE.md |

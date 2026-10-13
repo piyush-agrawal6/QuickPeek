@@ -34,6 +34,23 @@ test('project has reachable host, two embedded extensions and matching target de
   assert.equal(objects[project.rootObject].targets.length,3);
 });
 
+test('CI scheme is shared and covers the audited configuration and bundle identities',()=>{
+  const scheme=read('PeekProbe.xcodeproj/xcshareddata/xcschemes/PeekProbe.xcscheme');
+  const host=Object.entries(objects).find(([,o])=>o.isa==='PBXNativeTarget' && o.name==='PeekProbe');
+  assert.ok(scheme.includes(`BlueprintIdentifier="${host[0]}"`));
+  assert.ok(scheme.includes('buildImplicitDependencies="YES"'));
+  assert.ok(scheme.includes('buildForRunning="YES"'));
+  const config=read('Config/Product.xcconfig');
+  assert.match(config,/MACOSX_DEPLOYMENT_TARGET = 14\.0/);
+  assert.match(config,/SWIFT_VERSION = 6\.0/);
+  const expected={PeekProbe:'$(PEEK_BUNDLE_PREFIX)',PeekPreview:'$(PEEK_BUNDLE_PREFIX).preview',PeekThumbnail:'$(PEEK_BUNDLE_PREFIX).thumbnail'};
+  for(const target of targets) {
+    const configs=objects[target.buildConfigurationList].buildConfigurations.map(id=>objects[id]);
+    assert.deepEqual(configs.map(c=>c.name).sort(),['Debug','Release']);
+    for(const c of configs) assert.equal(c.buildSettings.PRODUCT_BUNDLE_IDENTIFIER,expected[target.name]);
+  }
+});
+
 test('all object references resolve and all source/config paths exist',()=>{
   const refs=new Set(['buildConfigurationList','baseConfigurationReference','fileRef','containerPortal','target','targetProxy','mainGroup','productRefGroup','productReference','remoteGlobalIDString']);
   const arrays=new Set(['children','buildConfigurations','buildPhases','dependencies','files','targets']);

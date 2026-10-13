@@ -9,6 +9,8 @@ Phase 00. All required earlier gates must pass before production work starts.
 ## Technical Decisions
 POC displays markers only, uses no production parsers, and makes no routing claims. Imported type candidates are hypotheses, not observed system types.
 
+Compile-only CI uses Codemagic's Apple Silicon workflow and the existing shared PeekProbe scheme, which explicitly depends on and embeds PeekPreview and PeekThumbnail. No scheme or production-code changes are required. Signing is disabled only at the CI command line; no Apple credentials are requested. See [CI audit](../CI.md).
+
 ## Tasks
 - [x] Review Apple preview, thumbnail, and imported UTType documentation
 - [x] Create a host app plus minimal embedded preview and thumbnail extension targets
@@ -23,6 +25,9 @@ POC displays markers only, uses no production parsers, and makes no routing clai
 
 ## Testing Requirements
 - [x] Run local project and planning contract checks
+- [x] Audit shared scheme, configurations, bundle identifiers and host extension dependencies for CI readiness
+- [x] Prepare Codemagic compile-only workflow, diagnostics, existing tests and unsigned inspection artifacts
+- [ ] Run first real macOS Codemagic build and record commit, toolchain, build URL and result
 - [ ] Build the three macOS targets and inspect final Info.plists
 - [ ] Manually exercise Finder Space and icon thumbnails independently on both OS endpoints
 - [ ] Verify unchanged fixture hashes after testing
@@ -43,6 +48,9 @@ Built-in handler precedence, dynamic UTIs, hidden ENV names, other apps, stale t
 - docs/QUICKLOOK_COMPATIBILITY_MATRIX.md
 - docs/QUICKLOOK_TEST_PLAN.md
 - docs/ADR/ADR-001-QUICKLOOK-STRATEGY.md
+- codemagic.yaml
+- docs/CI.md
+- scripts/inspect-ci-bundle.py
 
 ## Completion Summary
 Not completed. Fill with verified outcomes and evidence only after acceptance.
@@ -50,4 +58,6 @@ Not completed. Fill with verified outcomes and evidence only after acceptance.
 ## Status
 Blocked
 
-BLOCK-001: prepared on Windows without Xcode, Swift or Finder. Four of ten primary preparation tasks complete (40%); this is not 40% validated platform support. Eight Node contracts and five Python fixture/plist tests pass locally. Native smoke-test source and macOS CI are prepared but unexecuted. Options: a configured Mac workspace for signed interactive testing, or macOS CI for initial compilation followed by Mac manual testing. Recommended: follow QUICKLOOK_TEST_PLAN.md on minimum/latest macOS and update ADR-001 from evidence. Do not advance to production implementation.
+Readiness: **CODE_COMPLETE / CI_PENDING / REMOTE_MAC_PENDING**. CODE_COMPLETE applies only to Windows-local preparation and CI configuration, not production features or validated Swift compilation. Four of ten primary tasks remain complete (40%); CI readiness detail does not inflate platform-validation progress.
+
+BLOCK-001: Windows has no Xcode, Swift or Finder. Codemagic configuration and the project audit are ready, but its real compile/tests are pending. After CI passes, signed interactive Finder validation on minimum/latest macOS is still required. Record real CI evidence in CURRENT_STATE.md, then execute QUICKLOOK_TEST_PLAN.md and update ADR-001. Production renderers remain blocked; Phase 01 is not complete.

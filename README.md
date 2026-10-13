@@ -6,6 +6,8 @@ Native, private, read-only macOS developer/data inspection. Working codename; co
 
 Start with [Current state](docs/CURRENT_STATE.md), [Master plan](docs/MASTER_PLAN.md) and [Quick Look test plan](docs/QUICKLOOK_TEST_PLAN.md).
 
+For the first real macOS compile, use the manual `macos-probe-compile` workflow in [codemagic.yaml](codemagic.yaml). The [CI guide](docs/CI.md) documents the audited targets/shared scheme, unsigned build, diagnostics, artifacts and troubleshooting. Readiness is CODE_COMPLETE / CI_PENDING / REMOTE_MAC_PENDING; no macOS build result is claimed yet.
+
 ## What is here
 - All 21 detailed phase plans through App Store release and post-launch.
 - Checked-in Xcode project containing a SwiftUI host and embedded preview/thumbnail extensions.

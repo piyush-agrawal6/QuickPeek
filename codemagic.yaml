@@ -1,0 +1,102 @@
+# Compile/test validation only. No signing, distribution or automatic triggers.
+workflows:
+  macos-probe-compile:
+    name: Project Peek macOS compile validation
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+      node: lts
+    scripts:
+      - name: Record macOS and toolchain diagnostics
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          mkdir -p artifacts/ci
+          {
+            test "$(uname -s)" = Darwin
+            sw_vers
+            uname -m
+            xcode-select -p
+            xcodebuild -version
+            xcodebuild -showsdks
+            xcrun swift --version
+            node --version
+            python3 --version
+            git rev-parse HEAD
+          } 2>&1 | tee artifacts/ci/01-environment.log
+      - name: Validate project and list shared schemes
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          {
+            plutil -lint PeekProbe.xcodeproj/project.pbxproj
+            plutil -lint POC/Host/Info.plist POC/Preview/Info.plist POC/Thumbnail/Info.plist
+            plutil -lint POC/Host/Host.entitlements POC/Preview/Preview.entitlements POC/Thumbnail/Thumbnail.entitlements
+            test -f PeekProbe.xcodeproj/xcshareddata/xcschemes/PeekProbe.xcscheme
+            xcodebuild -list -project PeekProbe.xcodeproj
+          } 2>&1 | tee artifacts/ci/02-project.log
+          xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe \
+            -configuration Debug -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO -showBuildSettings \
+            2>&1 | tee artifacts/ci/03-build-settings.log
+      - name: Resolve package dependencies
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          # There are currently no package references; still ask Xcode to resolve the project.
+          xcodebuild -resolvePackageDependencies -project PeekProbe.xcodeproj \
+            -scheme PeekProbe -clonedSourcePackagesDirPath build/SourcePackages \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee artifacts/ci/04-packages.log
+      - name: Run repository and fixture tests
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          node --test Tests/Repository/*.test.mjs 2>&1 | tee artifacts/ci/05-repository-tests.log
+          python3 Tests/Repository/fixtures_test.py 2>&1 | tee artifacts/ci/06-fixture-tests.log
+          {
+            python3 scripts/generate-fixtures.py
+            python3 scripts/verify-fixtures.py
+          } 2>&1 | tee artifacts/ci/07-fixture-integrity.log
+      - name: Build host and both embedded extensions without signing
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          # PeekProbe has explicit dependencies on PeekPreview and PeekThumbnail.
+          # One scheme build compiles all three and executes Embed App Extensions.
+          xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe \
+            -configuration Debug -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -resultBundlePath artifacts/ci/build.xcresult \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee artifacts/ci/08-build.log
+      - name: Inspect and preserve unsigned app for debugging
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          app_path=build/DerivedData/Build/Products/Debug/PeekProbe.app
+          python3 scripts/inspect-ci-bundle.py "$app_path" | tee artifacts/ci/bundle-report.json
+          {
+            file "$app_path/Contents/MacOS/PeekProbe"
+            file "$app_path/Contents/PlugIns/PeekPreview.appex/Contents/MacOS/PeekPreview"
+            file "$app_path/Contents/PlugIns/PeekThumbnail.appex/Contents/MacOS/PeekThumbnail"
+            /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$app_path" artifacts/ci/PeekProbe-unsigned-inspection.zip
+            shasum -a 256 artifacts/ci/PeekProbe-unsigned-inspection.zip > artifacts/ci/PeekProbe-unsigned-inspection.sha256
+          } 2>&1 | tee artifacts/ci/09-bundle.log
+      - name: Compile and run native probe smoke tests
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          # No XCTest target or TestAction exists yet. Run the existing Swift harness directly.
+          {
+            xcrun swiftc -swift-version 6 POC/Shared/FileProbe.swift Tests/Probe/ProbeSmokeTests.swift -o build/probe-tests
+            build/probe-tests
+            xcrun swift scripts/probe-types.swift Tests/Fixtures/Generated
+            python3 scripts/verify-fixtures.py
+          } 2>&1 | tee artifacts/ci/10-native-tests.log
+    artifacts:
+      - artifacts/ci/*.log
+      - artifacts/ci/*.json
+      - artifacts/ci/*.zip
+      - artifacts/ci/*.sha256
+      - artifacts/ci/*.xcresult
