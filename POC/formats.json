@@ -1,0 +1,13 @@
+[
+  {"name":"JSON","extensions":["json"],"type":"public.json","imported":false,"text":true},
+  {"name":"JSON Lines","extensions":["jsonl","ndjson"],"type":"org.ndjson.ndjson","imported":true,"text":true},
+  {"name":"YAML","extensions":["yaml","yml"],"type":"public.yaml","imported":true,"text":true},
+  {"name":"TOML","extensions":["toml"],"type":"org.toml.toml","imported":true,"text":true},
+  {"name":"XML","extensions":["xml"],"type":"public.xml","imported":false,"text":true},
+  {"name":"CSV","extensions":["csv"],"type":"public.comma-separated-values-text","imported":false,"text":true},
+  {"name":"TSV","extensions":["tsv"],"type":"public.tab-separated-values-text","imported":false,"text":true},
+  {"name":"Environment","extensions":["env"],"type":"com.example.peek.env","imported":true,"text":true},
+  {"name":"Log","extensions":["log"],"type":"com.example.peek.log","imported":true,"text":true},
+  {"name":"SQLite","extensions":["sqlite","sqlite3","db"],"type":"public.sqlite3","imported":true,"text":false},
+  {"name":"Markdown","extensions":["md"],"type":"net.daringfireball.markdown","imported":true,"text":true}
+]

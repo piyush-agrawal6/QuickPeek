@@ -1,0 +1,14 @@
+// Branding and release identity live here. Local.xcconfig is ignored by Git.
+PEEK_DISPLAY_NAME = Project Peek
+PEEK_BUNDLE_PREFIX = com.example.peek
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+MACOSX_DEPLOYMENT_TARGET = 14.0
+SWIFT_VERSION = 6.0
+// Fill before release; blank URLs must not appear as clickable UI links.
+PEEK_WEBSITE =
+PEEK_SUPPORT_EMAIL =
+PEEK_PRIVACY_URL =
+PEEK_TERMS_URL =
+PEEK_APP_STORE_URL =
+#include? "Local.xcconfig"
