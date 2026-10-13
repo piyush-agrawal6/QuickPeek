@@ -42,12 +42,12 @@ Sandbox, extension signing, IAP verification/restore, privacy disclosures and cu
 ## Phase list
 Progress is completed primary task checkboxes / primary tasks, rounded to the nearest percent. It is not an acceptance pass. Testing checkboxes and all acceptance criteria must also pass before Complete.
 
-Phase 01 readiness: **CODE_COMPLETE / MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING**. GitHub Actions macos-26 has proven runner/project/dependency/repository stages and reached Swift compilation. PeekPreview failed actor-isolation checking; the explicit MainActor conformance fix awaits another run. Codemagic M2 remains untouched. Do not set CI_VERIFIED before a real macOS build succeeds with recorded evidence. These markers do not replace the phase's Blocked status or claim production completion. Production renderers remain blocked and unstarted. See [CI audit and troubleshooting](CI.md).
+Phase 01 readiness: **CODE_COMPLETE = PASS / CI_VERIFIED = PASS / REMOTE_MAC_PENDING = YES**. [GitHub Actions run 38421045778](https://github.com/piyush-agrawal6/QuickPeek/actions/runs/38421045778) verified the native build and checks at `38d0c7d`. Codemagic remains untouched. Phase 01 is Blocked only on REMOTE_MAC_VERIFIED: interactive Finder evidence and final ADR-001 decision. Production renderers remain unstarted. Follow [remote Mac testing](REMOTE_MAC_TESTING.md) and [CI evidence](CI.md).
 
 | Phase | Name | Dependency | Status | Progress | Major deliverables |
 |---|---|---|---|---:|---|
 | 00 | [Project Discovery](phases/PHASE_00_PROJECT_DISCOVERY.md) | None | Complete | 100% | docs/MASTER_PLAN.md; docs/CURRENT_STATE.md |
-| 01 | [Technical Validation](phases/PHASE_01_TECHNICAL_VALIDATION.md) | 00 | Blocked | 40% | PeekProbe.xcodeproj; POC/ |
+| 01 | [Technical Validation](phases/PHASE_01_TECHNICAL_VALIDATION.md) | 00 | Blocked | 50% | PeekProbe.xcodeproj; POC/ |
 | 02 | [Project Foundation](phases/PHASE_02_PROJECT_FOUNDATION.md) | 01 | Not Started | 0% | ProjectPeekApp/; ProjectPeekCore/ |
 | 03 | [Shared Renderer Core](phases/PHASE_03_SHARED_RENDERER_CORE.md) | 02 | Not Started | 0% | ProjectPeekCore/Models/; FileDetection/ |
 | 04 | [Structured Text Formats](phases/PHASE_04_STRUCTURED_TEXT_FORMATS.md) | 03 | Not Started | 0% | ProjectPeekCore/Parsers/; JSONRenderer |

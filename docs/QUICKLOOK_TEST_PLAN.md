@@ -1,9 +1,9 @@
 # Quick Look technical validation protocol
 
-Status: prepared; not executed on macOS. Only use generated synthetic fixtures.
+Status: native CI verified; interactive Finder protocol not executed. Only use generated synthetic fixtures. Start with [the complete remote Mac setup and test guide](REMOTE_MAC_TESTING.md).
 
 ## 1. Prerequisites and environment evidence
-Use a Mac with Swift 6-capable Xcode selected by `xcode-select`. Record `sw_vers`, `uname -m`, `xcodebuild -version`, `swift --version`, exact commit, install location, signing mode, enabled competing preview providers and OS build. Repeat on minimum macOS 14 and latest public macOS at execution time. Capture intermediate OS and Intel if available; never label absent coverage as a pass.
+Use a build Mac with Xcode 26.x+ and a Swift 6.2+ compiler selected by `xcode-select`. Xcode host requirements differ from the macOS 14 deployment minimum; use a separate compatible test Mac for minimum-OS runtime coverage. Record `sw_vers`, `uname -m`, `xcodebuild -version`, `swift --version`, exact commit, install location, signing mode, enabled competing preview providers and OS build. Repeat on minimum macOS 14 and latest public macOS at execution time. Capture intermediate OS and Intel if available; never label absent coverage as a pass.
 
 The checked-in Xcode project does not require Node. If changing types/settings, run `node scripts/generate-project.mjs` on a development machine and commit regenerated output. Candidates live in POC/formats.json; branding/versions in Config/Product.xcconfig.
 
@@ -14,24 +14,8 @@ swift scripts/probe-types.swift Tests/Fixtures/Generated
 ```
 Record each fixture's resolved resource UTType and suffix-derived type before installation. For representative fixtures also record `mdls -name kMDItemContentType -name kMDItemContentTypeTree` (Spotlight may be unavailable/stale; do not conflate it with resource metadata). Inspect native Finder previews and thumbnails before installing the probe. Show hidden files with Command-Shift-period for `.env` and `.env.local`.
 
-## 3. Compile check, then signed local build
-```sh
-xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build
-```
-This checks compilation only. Do not use an unsigned CI artifact as proof of extension behavior.
-
-For the real Finder test, open PeekProbe.xcodeproj in Xcode, configure your own team in an ignored Config/Local.xcconfig, and use the same team for all targets. Example values (replace with your own):
-```text
-DEVELOPMENT_TEAM = YOUR_TEAM_ID
-PEEK_BUNDLE_PREFIX = your.owned.namespace.peekprobe
-```
-Build using Xcode or the following command, which preserves automatic signing:
-```sh
-xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe -configuration Debug -derivedDataPath build/DerivedData build
-```
-Inspect signatures/entitlements using `codesign -dv --verbose=4` and `codesign -d --entitlements :-` on the app and both embedded appex bundles. Record evidence outside committed source; no credentials in Git.
-
-Install the built app to the test user's Applications location using Finder; launch once. Inspect Quick Look extension settings where exposed by that OS version. Record unknown state honestly if no reliable status API exists. `pluginkit -m -A -D` is supplementary registration evidence, not proof of Finder invocation. Do not force registration, change defaults or clear global caches as the baseline test.
+## 3. Locally signed runtime build
+Native unsigned CI already passed. Follow [remote setup sections 3–4](REMOTE_MAC_TESTING.md) for scheme PeekProbe, Debug/My Mac, Sign to Run Locally on all three targets, building/launching the host, inspecting both embedded extensions and effective entitlements, and checking registration. No production certificate is required. The unsigned CI artifact does not prove extension behavior. Preserve the clean baseline and record any later diagnostic intervention separately.
 
 ## 4. Observe every fixture
 For each row in the matrix and each OS:
@@ -53,6 +37,6 @@ python3 scripts/verify-fixtures.py
 Run this before regenerating any fixture. Also compare original timestamps/extended attributes manually if available; hash equality alone does not prove metadata unchanged. Record both source directory entries and any sidecar files. Thumbnail cache output belongs to macOS containers, never next to input files.
 
 ## 6. Evaluate the decision
-Fill every matrix field with measured observations or explicit unavailable evidence. Separate suffix coverage from distinct format-family value. At approximately 6–7 reliable useful families and acceptable strategic coverage, select Quick Look-first plus standalone inspector. Otherwise select Inspector-first plus proven extension support. A thumbnail-only success does not count as custom-preview success. Missing Mac access means decision pending, not No-Go.
+Fill every matrix field with measured observations or explicit unavailable evidence. Separate suffix coverage from distinct format-family value. At approximately 6–7 reliable useful families and acceptable strategic coverage, select Quick Look-first plus standalone inspector. A valuable reliable subset supports PARTIAL GO: selective Quick Look plus Inspector. Too little valuable coverage supports NO-GO FOR QUICKLOOK-FIRST: Inspector-first plus proven extension support. JSON or Markdown failing alone does not decide the outcome. A thumbnail-only success does not count as custom-preview success. Missing Mac access means decision pending, not No-Go.
 
 Update ADR-001, Phase 01 tasks/tests, MASTER_PLAN, CURRENT_STATE and KNOWN_ISSUES. Advance only after build/tests/manual gates pass and architecture decision has evidence.

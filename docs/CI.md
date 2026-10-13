@@ -1,7 +1,12 @@
 # macOS CI validation
 
 ## Readiness and scope
-**CODE_COMPLETE / MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING.** The GitHub macOS runner has reached Swift compilation. PeekPreview failed actor-isolation checking; a targeted source fix awaits another real build. CI_VERIFIED is not set. Phase 01 stays Blocked. Production renderers remain unstarted.
+**CODE_COMPLETE = PASS / CI_VERIFIED = PASS / REMOTE_MAC_PENDING = YES**. Phase 01 remains Blocked only on REMOTE_MAC_VERIFIED; production renderers remain unstarted.
+
+## Authoritative green native validation
+[GitHub Actions run 38421045778](https://github.com/piyush-agrawal6/QuickPeek/actions/runs/38421045778), source commit `38d0c7d9745d0c568636df95fc650d6b7746e3c1`, completed successfully on the `macos-26` runner. Toolchain/repository diagnostics, Xcode project and shared-scheme validation, dependency resolution, repository/fixture checks, host and both extension builds, unsigned bundle inspection/packaging, native probe checks and artifact uploads passed. Exact OS/Xcode/Swift versions are retained in the run diagnostics; the source requires Swift 6.2+ (Xcode 26.x+) with Swift 6 language mode.
+
+The earlier actor-isolation failure below is resolved. No compiler workaround, architecture exclusion or concurrency relaxation was introduced. The green run verifies the configured build; it is not interactive Finder or minimum-OS/Intel runtime evidence. Use [remote Mac testing](REMOTE_MAC_TESTING.md) for the remaining gate.
 
 ## First authoritative native compile and isolation fix
 [Run 38373566151](https://github.com/piyush-agrawal6/QuickPeek/actions/runs/38373566151), commit `a55bd68dcb450401f1399c2e11bb9f6a486d5694`, completed with failure. GitHub API step results confirm runner setup, repository checkout, toolchain diagnostics, Xcode project discovery, dependency resolution and repository/fixture checks succeeded. The unsigned build failed; bundle inspection/native smoke tests were skipped; diagnostic and Xcode-result uploads succeeded. The compiler output supplied by the user identifies only the PeekPreview actor-isolation error on Xcode 26.x with Swift 6 language mode; it is not a runner, package-resolution or project-discovery failure.
@@ -15,7 +20,7 @@ final class PreviewViewController: NSViewController, @MainActor QLPreviewingCont
 ```
 This uses [SE-0470 isolated conformances](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0470-isolated-conformances.md), implemented in Swift 6.2, and the approach presented in [Apple's Swift concurrency update](https://developer.apple.com/videos/play/wwdc2025/245/). The compiler can restrict use of this conformance to MainActor instead of accepting a nonisolated promise. No @preconcurrency fallback is justified by the evidence, and none is added. AppKit access/completion stay on MainActor; the detached file read captures URL only and returns a Sendable value. This does not automatically make foreign Objective-C callers hop actors: actual Quick Look callback/lifecycle behavior still requires signed Finder validation.
 
-The source now requires a **Swift 6.2+ compiler (Xcode 26.x or newer)** for this syntax while retaining **SWIFT_VERSION=6.0**, complete concurrency checking, macOS 14.0 deployment and Intel/x86_64 support. Neither CI configuration nor architecture/build flags are changed. Another native build must verify the exact SDK conformance, both architecture compilations and the previously skipped checks; no additional compiler error is established from the supplied diagnostic.
+The source now requires a **Swift 6.2+ compiler (Xcode 26.x or newer)** for this syntax while retaining **SWIFT_VERSION=6.0**, complete concurrency checking, macOS 14.0 deployment and Intel/x86_64 support. Neither CI configuration nor architecture/build flags are changed. Run 38421045778 verified the fix and previously skipped bundle/native checks. No remaining compiler failure is known from that run; future source changes still require native CI.
 
 `codemagic.yaml` defines the manual workflow `macos-probe-compile` for an Apple Silicon M2 Mac mini, with `xcode: latest` and `node: lts`. Actual OS, CPU, Xcode, Swift, SDK, Node, Python and commit are printed on every run. After the first successful run, record and consider pinning the exact Xcode version. Runner access/credits and repository authorization must be available in the Codemagic account. The selected instance and YAML structure follow [Codemagic configuration documentation](https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/) and [machine types](https://docs.codemagic.io/knowledge-codemagic/machine-type/).
 
@@ -26,9 +31,9 @@ No signing certificates, profiles, secret groups, App Store integrations or dist
 | Path | Workflow | Runner | Trigger / current evidence |
 |---|---|---|---|
 | A. Codemagic M2 | `codemagic.yaml`: `macos-probe-compile` | `mac_mini_m2` | Manual; user reports compilation is queued. Configuration and queued job are untouched. |
-| B. GitHub Actions macOS | `.github/workflows/macos-probe.yml`: `macOS probe validation` | Standard GitHub-hosted `macos-26` | Runner operational; first build reached Swift and failed in PeekPreview. Isolation fix pending another run. |
+| B. GitHub Actions macOS | `.github/workflows/macos-probe.yml`: `macOS probe validation` | Standard GitHub-hosted `macos-26` | Authoritative green run 38421045778 at 38d0c7d; host, extensions and native checks passed. |
 
-Both paths are **compile-validation only** and use the exact unsigned build command below. Neither requires Apple credentials, provisions devices, signs a release, publishes the app or tests Finder routing. Do not set **CI_VERIFIED** until at least one real macOS build succeeds and its run URL, exact commit and toolchain are recorded. Record test results separately; a green compile with failed tests does not pass Phase 01. Current intermediate states are **MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING**.
+Both paths are **compile-validation only** and use the exact unsigned build command below. Neither requires Apple credentials, provisions devices, signs a release, publishes the app or tests Finder routing. **CI_VERIFIED = PASS** is supported by the successful run above. **REMOTE_MAC_PENDING = YES** remains until interactive testing and the architecture decision pass; CI success does not complete Phase 01.
 
 The new GitHub workflow includes environment and repository diagnostics (`pwd`, `git status`, `ls`), native project/plist checks, package resolution, existing Node/Python tests, the shared-scheme build, bundle inspection and native Swift checks. Push filters cover `POC/`, `Config/`, `PeekProbe.xcodeproj/`, `Tests/`, `scripts/`, `.github/workflows/`, `codemagic.yaml`, `.gitattributes` and `.gitignore`. Documentation-only pushes do not start it. No concurrency cancellation policy affects the queued Codemagic job.
 
@@ -44,7 +49,7 @@ To run path B immediately, push its configuration to `main` (which triggers this
 - CI preparation commit: `chore: add macOS CI validation workflow`. See Git history for its hash. Connecting Codemagic requires that this commit is available on the selected remote branch. No force-push or branch rewrite is needed.
 
 ## Discovered Xcode project
-This is a source/project-file audit. Xcode's own discovery output remains pending and is deliberately the first project diagnostic in CI.
+This source/project-file audit is now backed by successful native Xcode discovery, build and bundle inspection in run 38421045778.
 
 | Property | Discovered value |
 |---|---|
@@ -123,7 +128,7 @@ The ZIP preserves the built `.app` via `ditto` for structural inspection and lat
 | Invalid project.pbxproj | `02-project.log`: `plutil` and `xcodebuild -list` | Locate parser line/reference error; fix the deterministic generator and regenerate locally; compare checked-in output. Do not regenerate away errors during CI. |
 | Missing shared scheme | `02-project.log`: file check and scheme listing | Confirm case-sensitive path and target BlueprintIdentifier; share and commit scheme if missing. |
 | Wrong deployment target | `03-build-settings.log`: `MACOSX_DEPLOYMENT_TARGET`; `08-build.log` availability/link messages | Confirm all targets inherit 14.0; resolve actual SDK support rather than silently raising deployment target. |
-| Unavailable SDK/API | `01-environment.log`: installed SDK/Swift; `08-build.log`: SwiftCompile/Ld | Use a Swift 6-capable supported Xcode image; fix availability annotations or unsupported APIs. Record image/version change. |
+| Unavailable SDK/API | `01-environment.log`: installed SDK/Swift; `08-build.log`: SwiftCompile/Ld | Use a Swift 6.2+ compiler on a supported Xcode image; fix availability annotations or unsupported APIs. Record image/version change. |
 | Extension Info.plist errors | `02-project.log` plist lint; `08-build.log`: ProcessInfoPlistFile; inspection-step stderr | Check extension point, principal class/module expansion, package type, QL attributes and processed plist values. |
 | Missing embed extension phase | `08-build.log`: dependency graph and Copy steps; bundle-inspection step | Verify explicit dependencies, both appex product references and destination 13; fixing extension compilation alone is insufficient. |
 | Bundle identifier mismatch | `03-build-settings.log`: PRODUCT_BUNDLE_IDENTIFIER; `bundle-report.json` or inspection-step stderr | Compare host prefix and `.preview`/`.thumbnail`; remove unintended local override, not checks. |
@@ -137,7 +142,7 @@ The ZIP preserves the built `.app` via `ditto` for structural inspection and lat
 1. Ensure the CI readiness commit is on GitHub's `main` (a normal fast-forward push only after remote verification).
 2. Add the existing `piyush-agrawal6/QuickPeek` repository to Codemagic through the user's account; select YAML configuration. No service account, secret or Apple integration is configured by this work.
 3. Select branch `main`, workflow `macos-probe-compile`, and start the first build manually. Confirm the clone commit matches the readiness commit. This work does not start a paid/remote job automatically.
-4. Record build URL/ID, exact commit, runner/toolchain, step outcome and artifacts in CURRENT_STATE.md. Fix actual Mac errors and rerun until passing; CI_PENDING remains until real evidence exists.
+4. Record build URL/ID, exact commit, runner/toolchain, step outcome and artifacts in CURRENT_STATE.md. Fix actual Mac errors and rerun until passing; GitHub already satisfies CI_VERIFIED; record any Codemagic result independently.
 5. Keep REMOTE_MAC_PENDING until signed interactive minimum/latest-macOS Finder testing completes under [the manual protocol](QUICKLOOK_TEST_PLAN.md). Keep production renderers blocked until Phase 01's architecture gate passes.
 
 The older `.github/workflows/probe.yml` remains available and unchanged as a legacy baseline; the requested independent path B is `.github/workflows/macos-probe.yml`. A push may also trigger that older workflow. Configuration existence or any uninspected previous run is not passing evidence. Codemagic remains manual and its queued job is not cancelled or modified.

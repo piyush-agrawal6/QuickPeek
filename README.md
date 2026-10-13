@@ -2,11 +2,11 @@
 
 Native, private, read-only macOS developer/data inspection. Working codename; commercial name is undecided.
 
-**Status: technical probe prepared; macOS build and Finder validation pending.** This is not the production inspector. Development currently runs on Windows, so no routing or signing result is asserted. Production renderers remain behind the mandatory feasibility gate.
+**Status: native macOS CI verified; interactive Finder validation pending.** This is a technical probe, not the production inspector. Production renderers remain behind Phase 01's feasibility gate.
 
-Start with [Current state](docs/CURRENT_STATE.md), [Master plan](docs/MASTER_PLAN.md) and [Quick Look test plan](docs/QUICKLOOK_TEST_PLAN.md).
+Start with [Current state](docs/CURRENT_STATE.md), [Master plan](docs/MASTER_PLAN.md) and [remote Mac testing](docs/REMOTE_MAC_TESTING.md).
 
-The [CI guide](docs/CI.md) documents the two compile-only CI paths and their evidence. GitHub Actions reached Swift compilation and failed in PeekPreview's actor-isolation conformance; its targeted fix awaits a new build. Readiness is CODE_COMPLETE / MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING. No successful full native build or Finder result is claimed.
+The [CI guide](docs/CI.md) records the authoritative green run at `38d0c7d`. Readiness: **CODE_COMPLETE = PASS / CI_VERIFIED = PASS / REMOTE_MAC_PENDING = YES**. Both compile-only CI paths remain intact. No Finder routing result is claimed.
 
 ## What is here
 - All 21 detailed phase plans through App Store release and post-launch.
@@ -20,11 +20,7 @@ Requires a Swift 6.2+ compiler (Xcode 26.x or newer) for isolated protocol confo
 ```sh
 xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build
 ```
-For interactive Finder testing configure your own development team and bundle prefix in ignored Config/Local.xcconfig, then build with signing:
-```sh
-xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe -configuration Debug -derivedDataPath build/DerivedData build
-```
-Install and launch the built app, then follow the [full baseline/install/reboot protocol](docs/QUICKLOOK_TEST_PLAN.md). A successful build is not proof of Finder integration.
+For interactive Finder testing follow [the complete remote Mac guide](docs/REMOTE_MAC_TESTING.md): run the PeekProbe host scheme in Debug on My Mac using Sign to Run Locally for all three targets. No production certificate or App Store submission is needed. A successful build is not proof of Finder integration.
 
 ## Tests and fixture commands
 ```sh
@@ -42,4 +38,4 @@ Edit Config/Product.xcconfig for branding, identity, version and URLs. The empty
 POC/formats.json holds candidate UTTypes. Run `node scripts/generate-project.mjs` to regenerate plists, entitlements, project and shared scheme after changing target wiring/types. Commit generated output; building on a Mac does not require Node. Importing a type does not establish that Finder will choose our provider.
 
 ## Next gate
-Complete the compatibility matrix on minimum/latest macOS. Choose Quick Look-first only if approximately 6–7 strategically useful format families reliably route; otherwise adopt the standalone Inspector-first strategy with proven Quick Look integrations. Do not count suffix aliases as separate format families.
+Complete the compatibility matrix on minimum/latest macOS and finalize ADR-001 as GO, PARTIAL GO or NO-GO FOR QUICKLOOK-FIRST. Approximately 6–7 reliable useful families support Quick Look-first; a valuable subset supports selective Quick Look plus Inspector. Too little reliable coverage supports Inspector-first. Do not count suffix aliases as separate families; JSON/Markdown losses alone are not overall failure.

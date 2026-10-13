@@ -1,16 +1,17 @@
 # Decision
-Pending — feasibility gate remains closed.
+Pending — remote Finder feasibility gate remains closed.
 
 ## Context
-Product depends on Finder selecting our provider for enough useful formats. A Windows source preparation session cannot observe this. An unbuilt extension and an Info.plist entry are not evidence of routing success.
+The native build and automated checks passed in GitHub run 38421045778 at 38d0c7d. This proves compilation, not Finder selection, installed sandbox access or thumbnail routing. Interactive runtime evidence remains NOT_TESTED.
 
 ## Options
-1. Quick Look-first with standalone inspector, if approximately 6–7 strategically useful format families repeatedly work.
-2. Inspector-first with drag/drop, Open With and only proven Quick Look integrations, if routing coverage is insufficient. Optional Finder extension requires separate justification.
-3. Wait for missing evidence rather than guessing either outcome.
+1. GO: Quick Look-first plus standalone Inspector if approximately 6–7 strategically useful format families repeatedly invoke our preview with read access.
+2. PARTIAL GO: selective Quick Look plus standalone Inspector when a valuable reliable subset works and native handlers win elsewhere.
+3. NO-GO FOR QUICKLOOK-FIRST: Inspector-first while retaining useful proven Quick Look integrations if too few valuable families route reliably.
+4. Wait for missing evidence rather than guessing an outcome.
 
 ## Decision
-Choose option 3 for now. Do not start production phases 02–20. Execute the test plan and matrix on current/minimum macOS, review usefulness of winning formats, then explicitly choose option 1 or 2. `.yaml` and `.yml` are one family, as are three SQLite suffixes; aliases cannot inflate coverage.
+Option 4 remains active. Execute [remote Mac testing](../REMOTE_MAC_TESTING.md) and populate the [matrix](../QUICKLOOK_COMPATIBILITY_MATRIX.md), then finalize this ADR with the chosen option, exact environments, evidence and rationale. Prioritize YAML, TOML, CSV/TSV, JSONL/NDJSON, ENV, LOG and SQLite. Count aliases as one family; JSON or Markdown failure alone is not overall failure. Missing environments are not No-Go evidence.
 
 ## Consequences
-Planning and the probe are prepared; actual build, sandbox behavior, routing and thumbnails remain unverified. No Quick Look support marketing is justified. The fallback inspector remains part of the planned product and is not abandoned.
+CODE_COMPLETE = PASS / CI_VERIFIED = PASS / REMOTE_MAC_PENDING = YES. No routing support claim is justified yet. The final decision and applicable manual gates must pass before Phase 01 completes and Phase 02 starts. Production renderers remain unstarted.

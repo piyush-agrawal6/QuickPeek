@@ -3,7 +3,7 @@
 ## BUG-001 — Quick Look preview conformance actor isolation
 Severity: High
 Phase: 01
-Status: Fix implemented — macOS CI verification pending (CI_BUILD_FIX_PENDING)
+Status: Resolved — verified in native CI run 38421045778 at 38d0c7d
 Affected versions: 0.1.0 POC through a55bd68
 
 ### Description
@@ -16,31 +16,31 @@ Build a55bd68 using macOS probe validation. Evidence: [GitHub run 38373566151](h
 The view controller's Quick Look conformance is usable in its main-actor isolation domain and compiles under strict Swift 6 checking for both supported architectures.
 
 ### Actual
-Compiler error: conformance of PreviewViewController to QLPreviewingController crosses into main actor-isolated code and can cause data races. Native smoke tests and bundle inspection were skipped after compilation failed. CI infrastructure is active, but no complete native build has passed yet.
+Compiler error: conformance of PreviewViewController to QLPreviewingController crosses into main actor-isolated code and can cause data races. Native smoke tests and bundle inspection were skipped after compilation failed. This describes the historical failed run; the subsequent native build and checks passed.
 
-### Proposed fix
-Applied explicit @MainActor to the class and to its QLPreviewingController conformance using Swift 6.2 isolated-conformance syntax (Xcode 26.x toolchain). Method bodies are unchanged. The detached task captures only URL and returns ProbeResult: Sendable; AppKit state and the completion handler remain in the MainActor task. No @preconcurrency, unsafe isolation assertion, architecture exclusion, language downgrade or relaxed concurrency setting is used. A new real macOS CI run must verify this API/toolchain combination; keep this issue open until it passes. Signed Finder callback/lifecycle behavior remains a separate manual gate.
+### Verified fix
+Applied explicit @MainActor to the class and to its QLPreviewingController conformance using Swift 6.2 isolated-conformance syntax (Xcode 26.x toolchain). Method bodies are unchanged. The detached task captures only URL and returns ProbeResult: Sendable; AppKit state and the completion handler remain in the MainActor task. No @preconcurrency, unsafe isolation assertion, architecture exclusion, language downgrade or relaxed concurrency setting is used. Verified by [run 38421045778](https://github.com/piyush-agrawal6/QuickPeek/actions/runs/38421045778), commit 38d0c7d; the compiler issue is closed. Signed Finder callback/lifecycle behavior remains a separate manual gate.
 
-## BLOCK-001
+## BLOCK-001 — interactive Finder evidence
 Severity: High
 Phase: 01
-Status: Open — external environment prerequisite
-Affected versions: 0.1.0 POC source
+Status: Open — REMOTE_MAC_PENDING = YES
+Affected versions: 0.1.0 POC
 
 ### Description
-Local work runs on Windows without Swift, Xcode or Finder. The GitHub macOS runner is now proven operational and has reached native compilation, but the complete probe build is blocked by BUG-001 and Finder behavior remains unverified.
+Native macOS CI now passes. Windows cannot provide interactive Finder routing, local signature/registration, installed sandbox access or callback/lifecycle evidence.
 
 ### Steps to reproduce
-Inspect `Get-Command swift,xcodebuild -ErrorAction SilentlyContinue`; neither tool exists.
+Review the runtime compatibility matrix: every field is NOT_TESTED. CI does not exercise Finder.
 
 ### Expected
-Build signed sandboxed targets and observe Finder routing on minimum/latest macOS.
+Observe locally signed sandboxed targets on minimum/latest macOS, recording OS/architecture, preview/thumbnail markers, read access and repeatability, then approve the strategy.
 
 ### Actual
-Readiness is CODE_COMPLETE / MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING. GitHub runner setup, Xcode project discovery, dependency resolution and repository checks passed. PeekPreview failed Swift actor-isolation checking; the fix awaits a new build. No positive or negative routing result is known.
+CODE_COMPLETE = PASS / CI_VERIFIED = PASS / REMOTE_MAC_PENDING = YES. No positive or negative Finder routing result is known.
 
 ### Proposed fix
-Verify the actor-isolation fix in another GitHub Actions run using unchanged CI. Leave Codemagic untouched. After build/tests pass, use Xcode 26.x with Swift 6.2+ on a real Mac and follow QUICKLOOK_TEST_PLAN.md for signed interactive Finder testing, including minimum/latest OS coverage. Keep Phase 01 Blocked and production phases Not Started until evidence supports ADR-001.
+Follow [REMOTE_MAC_TESTING.md](REMOTE_MAC_TESTING.md), populate the matrix from observations and finalize ADR-001. Keep Phase 01 Blocked and production phases Not Started until REMOTE_MAC_VERIFIED. Codemagic remains untouched.
 
 ## RISK-001 — candidate type declarations
 Severity: Medium
