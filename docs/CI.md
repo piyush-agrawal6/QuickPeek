@@ -5,7 +5,22 @@
 
 `codemagic.yaml` defines the manual workflow `macos-probe-compile` for an Apple Silicon M2 Mac mini, with `xcode: latest` and `node: lts`. Actual OS, CPU, Xcode, Swift, SDK, Node, Python and commit are printed on every run. After the first successful run, record and consider pinning the exact Xcode version. Runner access/credits and repository authorization must be available in the Codemagic account. The selected instance and YAML structure follow [Codemagic configuration documentation](https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/) and [machine types](https://docs.codemagic.io/knowledge-codemagic/machine-type/).
 
-No signing certificates, profiles, secret groups, App Store integrations, publishing steps or automatic triggers are configured. Repository access through Codemagic's GitHub connection is separate from Apple Developer credentials; no Apple account is needed for this compile-only workflow.
+No signing certificates, profiles, secret groups, App Store integrations or distribution steps are configured. Codemagic has no automatic triggers. Repository access through Codemagic's GitHub connection is separate from Apple Developer credentials; no Apple account is needed for compile validation.
+
+## Two independent CI paths
+
+| Path | Workflow | Runner | Trigger / current evidence |
+|---|---|---|---|
+| A. Codemagic M2 | `codemagic.yaml`: `macos-probe-compile` | `mac_mini_m2` | Manual; user reports compilation is queued. Configuration and queued job are untouched. |
+| B. GitHub Actions macOS | `.github/workflows/macos-probe.yml`: `macOS probe validation` | Standard GitHub-hosted `macos-26` | Manual `workflow_dispatch`, or push to `main` when project/CI paths change. First successful build evidence pending. |
+
+Both paths are **compile-validation only** and use the exact unsigned build command below. Neither requires Apple credentials, provisions devices, signs a release, publishes the app or tests Finder routing. Do not set **CI_VERIFIED** until at least one real macOS build succeeds and its run URL, exact commit and toolchain are recorded. Record test results separately; a green compile with failed tests does not pass Phase 01. Until that evidence exists, use **CI_PENDING / REMOTE_MAC_PENDING**.
+
+The new GitHub workflow includes environment and repository diagnostics (`pwd`, `git status`, `ls`), native project/plist checks, package resolution, existing Node/Python tests, the shared-scheme build, bundle inspection and native Swift checks. Push filters cover `POC/`, `Config/`, `PeekProbe.xcodeproj/`, `Tests/`, `scripts/`, `.github/workflows/`, `codemagic.yaml`, `.gitattributes` and `.gitignore`. Documentation-only pushes do not start it. No concurrency cancellation policy affects the queued Codemagic job.
+
+GitHub uploads logs/JSON with `always()`, and `build.xcresult` when generated even after failure. Its unsigned app ZIP is uploaded only when both the build and packaging steps succeed and the ZIP exists. If later native checks fail, the build artifact can still be inspected, but the workflow remains failed. Artifacts are retained for 14 days and named with run ID/attempt. The ZIP preserves the app bundle; downloaded Xcode result contents may need to be placed in a `.xcresult` directory for Xcode. See [GitHub artifact documentation](https://docs.github.com/en/actions/tutorials/store-and-share-data) and the [macOS runner inventory](https://github.com/actions/runner-images).
+
+To run path B immediately, push its configuration to `main` (which triggers this workflow), or open the repository's Actions tab, choose **macOS probe validation**, then **Run workflow** on `main`. Inspect its named logs using the same troubleshooting table below. A queued/running job is not successful validation. Leave path A queued and unchanged while path B runs.
 
 ## Git audit
 - Branch at preparation: `main`; initial working tree clean.
@@ -111,4 +126,4 @@ The ZIP preserves the built `.app` via `ditto` for structural inspection and lat
 4. Record build URL/ID, exact commit, runner/toolchain, step outcome and artifacts in CURRENT_STATE.md. Fix actual Mac errors and rerun until passing; CI_PENDING remains until real evidence exists.
 5. Keep REMOTE_MAC_PENDING until signed interactive minimum/latest-macOS Finder testing completes under [the manual protocol](QUICKLOOK_TEST_PLAN.md). Keep production renderers blocked until Phase 01's architecture gate passes.
 
-The older `.github/workflows/probe.yml` remains available and unchanged. Its existence or any uninspected previous run is not evidence that this Codemagic workflow has passed. A remote push may trigger that existing GitHub workflow; Codemagic remains manual.
+The older `.github/workflows/probe.yml` remains available and unchanged as a legacy baseline; the requested independent path B is `.github/workflows/macos-probe.yml`. A push may also trigger that older workflow. Configuration existence or any uninspected previous run is not passing evidence. Codemagic remains manual and its queued job is not cancelled or modified.

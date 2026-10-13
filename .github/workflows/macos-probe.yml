@@ -1,0 +1,152 @@
+name: macOS probe validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'POC/**'
+      - 'Config/**'
+      - 'PeekProbe.xcodeproj/**'
+      - 'Tests/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+      - 'codemagic.yaml'
+      - '.gitattributes'
+      - '.gitignore'
+
+permissions:
+  contents: read
+
+jobs:
+  macos-probe:
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Record macOS, toolchain and repository diagnostics
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ci
+          {
+            test "$(uname -s)" = Darwin
+            sw_vers
+            uname -m
+            xcode-select -p
+            xcodebuild -version
+            xcodebuild -showsdks
+            swift --version
+            node --version
+            python3 --version
+            pwd
+            git status
+            ls
+            git rev-parse HEAD
+          } 2>&1 | tee artifacts/ci/01-environment.log
+
+      - name: Validate project and list shared schemes
+        run: |
+          set -euo pipefail
+          {
+            plutil -lint PeekProbe.xcodeproj/project.pbxproj
+            plutil -lint POC/Host/Info.plist POC/Preview/Info.plist POC/Thumbnail/Info.plist
+            plutil -lint POC/Host/Host.entitlements POC/Preview/Preview.entitlements POC/Thumbnail/Thumbnail.entitlements
+            test -f PeekProbe.xcodeproj/xcshareddata/xcschemes/PeekProbe.xcscheme
+            xcodebuild -list -project PeekProbe.xcodeproj
+          } 2>&1 | tee artifacts/ci/02-project.log
+          xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe \
+            -configuration Debug -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO -showBuildSettings \
+            2>&1 | tee artifacts/ci/03-build-settings.log
+
+      - name: Resolve package dependencies
+        run: |
+          set -euo pipefail
+          xcodebuild -resolvePackageDependencies -project PeekProbe.xcodeproj \
+            -scheme PeekProbe -clonedSourcePackagesDirPath build/SourcePackages \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee artifacts/ci/04-packages.log
+
+      - name: Run repository and fixture checks
+        run: |
+          set -euo pipefail
+          node --test Tests/Repository/*.test.mjs 2>&1 | tee artifacts/ci/05-repository-tests.log
+          python3 Tests/Repository/fixtures_test.py 2>&1 | tee artifacts/ci/06-fixture-tests.log
+          {
+            python3 scripts/generate-fixtures.py
+            python3 scripts/verify-fixtures.py
+          } 2>&1 | tee artifacts/ci/07-fixture-integrity.log
+
+      - name: Build host and both embedded extensions without signing
+        id: build
+        run: |
+          set -euo pipefail
+          # The shared host scheme builds and embeds both extension dependencies.
+          xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe \
+            -configuration Debug -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -resultBundlePath artifacts/ci/build.xcresult \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee artifacts/ci/08-build.log
+
+      - name: Inspect and package unsigned app
+        id: package
+        if: ${{ success() && steps.build.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          app_path=build/DerivedData/Build/Products/Debug/PeekProbe.app
+          test -d "$app_path"
+          python3 scripts/inspect-ci-bundle.py "$app_path" | tee artifacts/ci/bundle-report.json
+          {
+            file "$app_path/Contents/MacOS/PeekProbe"
+            file "$app_path/Contents/PlugIns/PeekPreview.appex/Contents/MacOS/PeekPreview"
+            file "$app_path/Contents/PlugIns/PeekThumbnail.appex/Contents/MacOS/PeekThumbnail"
+            /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$app_path" artifacts/ci/PeekProbe-unsigned-inspection.zip
+            shasum -a 256 artifacts/ci/PeekProbe-unsigned-inspection.zip > artifacts/ci/PeekProbe-unsigned-inspection.sha256
+          } 2>&1 | tee artifacts/ci/09-bundle.log
+
+      - name: Compile and run native probe checks
+        run: |
+          set -euo pipefail
+          # No XCTest target exists: run the current standalone Swift test harness.
+          {
+            xcrun swiftc -swift-version 6 POC/Shared/FileProbe.swift Tests/Probe/ProbeSmokeTests.swift -o build/probe-tests
+            build/probe-tests
+            xcrun swift scripts/probe-types.swift Tests/Fixtures/Generated
+            python3 scripts/verify-fixtures.py
+          } 2>&1 | tee artifacts/ci/10-native-tests.log
+
+      - name: Upload diagnostics even on failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-probe-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ci/*.log
+            artifacts/ci/*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Xcode result bundle if generated
+        if: ${{ always() && hashFiles('artifacts/ci/build.xcresult/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-probe-xcresult-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci/build.xcresult
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload unsigned inspection archive only after successful build and packaging
+        if: ${{ always() && steps.build.outcome == 'success' && steps.package.outcome == 'success' && hashFiles('artifacts/ci/PeekProbe-unsigned-inspection.zip') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-probe-unsigned-inspection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ci/PeekProbe-unsigned-inspection.zip
+            artifacts/ci/PeekProbe-unsigned-inspection.sha256
+          if-no-files-found: error
+          retention-days: 14

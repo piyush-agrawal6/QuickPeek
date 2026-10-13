@@ -1,35 +1,34 @@
 # Current state
 
 Current Phase: 01 — Technical Validation (Blocked; not complete).
-Current Task: macOS CI readiness prepared; first real Codemagic build pending.
-Last Completed Task: Audit the Xcode project and prepare compile-only Codemagic workflow, diagnostics, unsigned artifact inspection and documentation.
-Next Task: Connect the repository to Codemagic and run macos-probe-compile against the CI readiness commit; fix actual Mac compiler/test errors before interactive Finder testing.
+Current Task: Independent GitHub Actions macOS validation prepared while Codemagic M2 remains queued.
+Last Completed Task: Add macos-probe.yml with the same unsigned build command, current checks and failure artifact collection.
+Next Task: Observe the GitHub Actions run triggered by the readiness push while leaving Codemagic queued; record actual build/test results and fix real Mac errors before Finder testing.
 
 ## Readiness states
 - **CODE_COMPLETE**: Windows-local planning, routing POC source preparation and CI configuration only. This does not mean the production application is complete or that Swift compiles.
-- **CI_PENDING**: No Codemagic build has been started or observed in this session. Real macOS compile and native test results are still required.
+- **CI_PENDING**: A. Codemagic M2 is queued per the user's report; neither its job nor configuration was changed. B. GitHub Actions on standard macos-26 is independently configured. No successful real macOS build has been verified in this session. Do not set **CI_VERIFIED** until at least one real build succeeds with recorded run/commit evidence.
 - **REMOTE_MAC_PENDING**: Signed, interactive Finder preview/thumbnail validation on minimum/latest macOS is pending even after CI succeeds.
 - Production renderers: blocked, not started. Phase 00 remains Complete; Phase 01 remains Blocked at 40% of its original primary tasks.
 
 ## Completed this session
-- Confirmed milestone b6c0b54 exists and the starting working tree was clean on main.
-- Verified origin fetch/push URL is https://github.com/piyush-agrawal6/QuickPeek.git; live read-only remote inspection confirmed main at b6c0b546c2bc952912215ce9799baffc3d2c5081 before changes. This supersedes the earlier no-remote state.
-- Audited PeekProbe.xcodeproj: shared PeekProbe scheme, Debug/Release, macOS 14.0, Swift 6.0, three targets and both extension dependencies/embedding references.
-- Created codemagic.yaml with Apple Silicon runner, native project diagnostics, dependency resolution, all existing tests, unsigned scheme build, bundle inspection and retained logs/artifacts.
-- Added docs/CI.md with build identifiers, connection procedure and failure-to-log troubleshooting map.
-- Added a processed-bundle inspector and one repository contract for scheme/configuration/bundle-ID consistency. POC Swift source and generated Xcode project remain unchanged.
-- Updated readiness states without passing the feasibility gate or starting production renderers.
+- Started with clean main at 356cf74 and the existing origin https://github.com/piyush-agrawal6/QuickPeek.git.
+- Added .github/workflows/macos-probe.yml on standard GitHub-hosted macos-26, with manual dispatch and relevant-file pushes to main only.
+- Matched Codemagic's build arguments, project/package validation, repository/fixture tests, bundle inspection and standalone native Swift tests.
+- Added unconditional diagnostic uploads, conditional Xcode result upload and success-gated unsigned ZIP upload, each retained for 14 days.
+- Documented two independent compile-validation paths and kept CI_PENDING / REMOTE_MAC_PENDING explicit.
+- Preserved codemagic.yaml, the queued Codemagic job, legacy .github/workflows/probe.yml, POC source, signing settings and generated Xcode project. No production renderer was started.
 
 ## Files changed
-Created: codemagic.yaml, docs/CI.md, scripts/inspect-ci-bundle.py.
-Changed: README.md, Tests/Repository/contracts.test.mjs, docs/CURRENT_STATE.md, docs/MASTER_PLAN.md, docs/KNOWN_ISSUES.md, docs/phases/PHASE_01_TECHNICAL_VALIDATION.md.
-The existing GitHub Actions workflow is unchanged. Temporary YAML tooling is confined to ignored build/ci-tools and is not a project dependency or commit artifact.
+Created: .github/workflows/macos-probe.yml.
+Changed: docs/CI.md, docs/CURRENT_STATE.md, docs/MASTER_PLAN.md, docs/phases/PHASE_01_TECHNICAL_VALIDATION.md.
+Temporary YAML tooling stays in ignored build/ci-tools and is not a project dependency or commit artifact.
 
 ## Tests run
 - Node 24.19.0: **9/9 repository contracts passed**, including new shared-scheme/configuration/identifier audit and deterministic project regeneration.
 - Bundled Python: **5/5 fixture/plist tests passed**.
-- YAML parsed with temporary yaml 2.8.1: no syntax/duplicate-key errors; selected workflow structure checked. This is local syntax/configuration validation, not Codemagic service acceptance.
-- All seven extracted Bash scripts passed `bash -n`; none were executed. Initial sandbox prevented Git Bash startup; syntax checking succeeded with the permitted process access.
+- Both YAML workflows are checked with temporary yaml 2.8.1 for syntax/duplicate keys, trigger/runner/artifact policy and exact build-command parity. Local validation is not remote service acceptance.
+- All 14 Bash scripts across the two paths are syntax-checked with `bash -n`; no CI script or Xcode command is executed on Windows.
 - New bundle inspector passed Python syntax compilation. It has not inspected a real app yet; that is a CI step.
 - Git whitespace checks passed during readiness verification.
 No Xcode, Swift, signed sandbox, Finder or macOS runtime result is claimed. No fake macOS tools or build outputs were used.
@@ -43,7 +42,7 @@ Disposable routing POC only: SwiftUI host + AppKit/Quartz QLPreviewingController
 - docs/ADR/ADR-001-QUICKLOOK-STRATEGY.md
 - Config/Product.xcconfig and POC/formats.json
 - PeekProbe.xcodeproj and scripts/generate-project.mjs
-- codemagic.yaml, docs/CI.md and scripts/inspect-ci-bundle.py
+- codemagic.yaml, .github/workflows/macos-probe.yml, docs/CI.md and scripts/inspect-ci-bundle.py
 
 ## Build command — macOS only
 ```sh
@@ -65,10 +64,10 @@ build/probe-tests
 Run fixture verification after Finder inspection and before regeneration. Node is optional for generation; the Xcode project is already checked in.
 
 ## Known issues and blockers
-BLOCK-001: Windows has no Xcode/Swift/Finder. Codemagic account/repository connection, runner access and the first real macOS CI result remain pending. Apple credentials are not needed for compile-only CI. A signed interactive Mac environment is still needed later. Candidate type resolution is unmeasured, particularly dotfile ENV and ambiguous .db files. POC may require compiler/SDK corrections on its first Mac build. No release-ready app exists yet.
+BLOCK-001: Windows has no Xcode/Swift/Finder. Codemagic M2 is queued per user; the first successful real macOS compile/test evidence remains pending from either CI path. Apple credentials are not needed for compile-only CI. A signed interactive Mac environment is still needed later. Candidate type resolution is unmeasured, particularly dotfile ENV and ambiguous .db files. POC may require compiler/SDK corrections on its first Mac build. No release-ready app exists yet.
 
 ## Decisions made and important discoveries
 Provisional macOS 14 minimum; Swift 6; no third-party runtime dependencies; no cloud/AI/subscriptions; read-only sandbox-first design. Quick Look strategy remains pending, not Go or No-Go. UTType imports do not prove handler priority, and suffix aliases must not inflate strategic coverage. Windows cannot replace manual Mac evidence.
 
 ## Next recommended action
-Follow CI.md to select main and macos-probe-compile in Codemagic. Record the first actual build URL/ID, exact commit, runner/toolchain, result and diagnostic artifacts here. Once compile/tests pass, follow QUICKLOOK_TEST_PLAN.md on real Macs and populate every matrix row before choosing ADR-001's strategy. Keep phases 02–20 Not Started until Phase 01 acceptance passes.
+Follow CI.md for path B: inspect macOS probe validation in GitHub Actions after push, or use workflow_dispatch on main. Leave queued path A (Codemagic M2) untouched. Record the first successful real build URL/ID, exact commit, runner/toolchain and test results before setting CI_VERIFIED. Once compile/tests pass, follow QUICKLOOK_TEST_PLAN.md on real Macs and populate every matrix row before choosing ADR-001's strategy. Keep phases 02–20 Not Started until Phase 01 acceptance passes.
