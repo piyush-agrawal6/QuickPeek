@@ -1,28 +1,28 @@
 # Current state
 
 Current Phase: 01 — Technical Validation (Blocked; not complete).
-Current Task: Independent GitHub Actions macOS validation prepared while Codemagic M2 remains queued.
-Last Completed Task: Add macos-probe.yml with the same unsigned build command, current checks and failure artifact collection.
-Next Task: Observe the GitHub Actions run triggered by the readiness push while leaving Codemagic queued; record actual build/test results and fix real Mac errors before Finder testing.
+Current Task: Verify the PeekPreview main-actor conformance fix in another GitHub Actions build.
+Last Completed Task: Diagnose the first native compiler failure and annotate PreviewViewController and its QLPreviewingController conformance with MainActor.
+Next Task: Inspect the new GitHub Actions run after pushing the fix; confirm both architectures and subsequent native checks before marking CI_VERIFIED. Keep Codemagic untouched.
 
 ## Readiness states
-- **CODE_COMPLETE**: Windows-local planning, routing POC source preparation and CI configuration only. This does not mean the production application is complete or that Swift compiles.
-- **CI_PENDING**: A. Codemagic M2 is queued per the user's report; neither its job nor configuration was changed. B. GitHub Actions on standard macos-26 is independently configured. No successful real macOS build has been verified in this session. Do not set **CI_VERIFIED** until at least one real build succeeds with recorded run/commit evidence.
+- **CODE_COMPLETE**: Targeted actor-isolation source fix prepared. This does not mean the production application is complete or that the fix has compiled.
+- **MACOS_CI_ACTIVE**: Real GitHub Actions macos-26 runner, Xcode project discovery, dependency resolution and repository checks have passed and the build reached Swift compilation.
+- **CI_BUILD_FIX_PENDING**: First build failed in PeekPreview on the main-actor/nonisolated protocol mismatch. Explicit isolated conformance is applied, pending another macOS build. **CI_VERIFIED is not set.**
 - **REMOTE_MAC_PENDING**: Signed, interactive Finder preview/thumbnail validation on minimum/latest macOS is pending even after CI succeeds.
 - Production renderers: blocked, not started. Phase 00 remains Complete; Phase 01 remains Blocked at 40% of its original primary tasks.
 
 ## Completed this session
-- Started with clean main at 356cf74 and the existing origin https://github.com/piyush-agrawal6/QuickPeek.git.
-- Added .github/workflows/macos-probe.yml on standard GitHub-hosted macos-26, with manual dispatch and relevant-file pushes to main only.
-- Matched Codemagic's build arguments, project/package validation, repository/fixture tests, bundle inspection and standalone native Swift tests.
-- Added unconditional diagnostic uploads, conditional Xcode result upload and success-gated unsigned ZIP upload, each retained for 14 days.
-- Documented two independent compile-validation paths and kept CI_PENDING / REMOTE_MAC_PENDING explicit.
-- Preserved codemagic.yaml, the queued Codemagic job, legacy .github/workflows/probe.yml, POC source, signing settings and generated Xcode project. No production renderer was started.
+- Started with clean main at a55bd68; existing origin remains https://github.com/piyush-agrawal6/QuickPeek.git.
+- Read authoritative GitHub API status for [run 38373566151](https://github.com/piyush-agrawal6/QuickPeek/actions/runs/38373566151), commit a55bd68dcb450401f1399c2e11bb9f6a486d5694. Runner/toolchain, project discovery, package resolution and repository/fixture checks passed; build failed; diagnostics and result-bundle upload passed. Packaging and native smoke tests were skipped.
+- Used the user's compiler excerpt to identify the PeekPreview-only actor-isolation mismatch on Xcode 26.x / Swift 6 language mode.
+- Reviewed Swift SE-0470, implemented in Swift 6.2, and selected explicit isolated conformance without @preconcurrency or unsafe assertions.
+- Added @MainActor to PreviewViewController and @MainActor to its QLPreviewingController conformance. Existing callback body, detached read and MainActor UI/completion handling remain unchanged.
+- Preserved Intel/x86_64 support, SWIFT_VERSION=6.0, complete strict concurrency, both extensions, deployment target, generated project, all CI workflows and Codemagic job. Production scope is unchanged.
 
 ## Files changed
-Created: .github/workflows/macos-probe.yml.
-Changed: docs/CI.md, docs/CURRENT_STATE.md, docs/MASTER_PLAN.md, docs/phases/PHASE_01_TECHNICAL_VALIDATION.md.
-Temporary YAML tooling stays in ignored build/ci-tools and is not a project dependency or commit artifact.
+Changed: POC/Preview/PreviewViewController.swift, README.md, docs/CI.md, docs/CURRENT_STATE.md, docs/KNOWN_ISSUES.md, docs/MASTER_PLAN.md, docs/phases/PHASE_01_TECHNICAL_VALIDATION.md.
+No project, compiler-setting, architecture or workflow changes. Temporary local checking tools stay ignored under build/ci-tools.
 
 ## Tests run
 - Node 24.19.0: **9/9 repository contracts passed**, including new shared-scheme/configuration/identifier audit and deterministic project regeneration.
@@ -31,7 +31,7 @@ Temporary YAML tooling stays in ignored build/ci-tools and is not a project depe
 - All 14 Bash scripts across the two paths are syntax-checked with `bash -n`; no CI script or Xcode command is executed on Windows.
 - New bundle inspector passed Python syntax compilation. It has not inspected a real app yet; that is a CI step.
 - Git whitespace checks passed during readiness verification.
-No Xcode, Swift, signed sandbox, Finder or macOS runtime result is claimed. No fake macOS tools or build outputs were used.
+Local checks cannot validate this Swift change. The failed native build above is real CI evidence for the previous commit; the fix has no native result yet. No fake macOS tools/build outputs were used. Signed sandbox and Finder runtime behavior remain unverified.
 
 ## Architecture
 Disposable routing POC only: SwiftUI host + AppKit/Quartz QLPreviewingController + QuickLookThumbnailing provider. Shared FileProbe reads metadata and at most 32 bytes; contents/paths are not displayed or logged. No production renderer, SQLite reader, StoreKit or runtime dependency. Future production app and extensions share one renderer core.
@@ -64,10 +64,10 @@ build/probe-tests
 Run fixture verification after Finder inspection and before regeneration. Node is optional for generation; the Xcode project is already checked in.
 
 ## Known issues and blockers
-BLOCK-001: Windows has no Xcode/Swift/Finder. Codemagic M2 is queued per user; the first successful real macOS compile/test evidence remains pending from either CI path. Apple credentials are not needed for compile-only CI. A signed interactive Mac environment is still needed later. Candidate type resolution is unmeasured, particularly dotfile ENV and ambiguous .db files. POC may require compiler/SDK corrections on its first Mac build. No release-ready app exists yet.
+BUG-001: PeekPreview's implicit MainActor instance method cannot satisfy the originally nonisolated QLPreviewingController conformance. The isolated-conformance fix requires Swift 6.2+ (Xcode 26.x+), while language mode remains Swift 6 and deployment remains macOS 14. A new native build must verify it and may reveal later diagnostics; no additional compiler error is established yet. BLOCK-001: Windows cannot compile Apple frameworks or test Finder. Codemagic is untouched. Actual Objective-C Quick Look callback/lifecycle behavior and type routing need signed interactive testing. No release-ready app exists yet.
 
 ## Decisions made and important discoveries
 Provisional macOS 14 minimum; Swift 6; no third-party runtime dependencies; no cloud/AI/subscriptions; read-only sandbox-first design. Quick Look strategy remains pending, not Go or No-Go. UTType imports do not prove handler priority, and suffix aliases must not inflate strategic coverage. Windows cannot replace manual Mac evidence.
 
 ## Next recommended action
-Follow CI.md for path B: inspect macOS probe validation in GitHub Actions after push, or use workflow_dispatch on main. Leave queued path A (Codemagic M2) untouched. Record the first successful real build URL/ID, exact commit, runner/toolchain and test results before setting CI_VERIFIED. Once compile/tests pass, follow QUICKLOOK_TEST_PLAN.md on real Macs and populate every matrix row before choosing ADR-001's strategy. Keep phases 02–20 Not Started until Phase 01 acceptance passes.
+Inspect the post-fix GitHub Actions run for both architecture compilations, bundle inspection and native smoke-test outcomes. Record the exact commit/run URL/toolchain before setting CI_VERIFIED and close BUG-001 only after verification. Leave Codemagic unchanged. Once compile/tests pass, follow QUICKLOOK_TEST_PLAN.md on real Macs and populate every matrix row before choosing ADR-001's strategy. Keep phases 02–20 Not Started until Phase 01 acceptance passes.

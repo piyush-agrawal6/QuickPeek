@@ -1,7 +1,8 @@
 import AppKit
 import Quartz
 
-final class PreviewViewController: NSViewController, QLPreviewingController {
+@MainActor
+final class PreviewViewController: NSViewController, @MainActor QLPreviewingController {
     private let label = NSTextField(wrappingLabelWithString: "Preparing routing probe…")
 
     override func loadView() {

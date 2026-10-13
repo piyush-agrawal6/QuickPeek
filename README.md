@@ -6,7 +6,7 @@ Native, private, read-only macOS developer/data inspection. Working codename; co
 
 Start with [Current state](docs/CURRENT_STATE.md), [Master plan](docs/MASTER_PLAN.md) and [Quick Look test plan](docs/QUICKLOOK_TEST_PLAN.md).
 
-For the first real macOS compile, use the manual `macos-probe-compile` workflow in [codemagic.yaml](codemagic.yaml). The [CI guide](docs/CI.md) documents the audited targets/shared scheme, unsigned build, diagnostics, artifacts and troubleshooting. Readiness is CODE_COMPLETE / CI_PENDING / REMOTE_MAC_PENDING; no macOS build result is claimed yet.
+The [CI guide](docs/CI.md) documents the two compile-only CI paths and their evidence. GitHub Actions reached Swift compilation and failed in PeekPreview's actor-isolation conformance; its targeted fix awaits a new build. Readiness is CODE_COMPLETE / MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING. No successful full native build or Finder result is claimed.
 
 ## What is here
 - All 21 detailed phase plans through App Store release and post-launch.
@@ -16,7 +16,7 @@ For the first real macOS compile, use the manual `macos-probe-compile` workflow 
 - No third-party app runtime dependency, production parser, purchase implementation or backend.
 
 ## Build on macOS
-Requires Swift 6-capable Xcode and provisional macOS 14+ deployment support. For a compilation-only check:
+Requires a Swift 6.2+ compiler (Xcode 26.x or newer) for isolated protocol conformance syntax, with Swift 6 language mode and provisional macOS 14+ deployment support. For a compilation-only check:
 ```sh
 xcodebuild -project PeekProbe.xcodeproj -scheme PeekProbe -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build
 ```

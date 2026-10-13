@@ -1,7 +1,21 @@
 # macOS CI validation
 
 ## Readiness and scope
-**CODE_COMPLETE / CI_PENDING / REMOTE_MAC_PENDING.** CI configuration and Windows-local project audit are complete; no Xcode compilation or Finder test is claimed by this document. Phase 01 stays Blocked. Production renderers remain unstarted.
+**CODE_COMPLETE / MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING.** The GitHub macOS runner has reached Swift compilation. PeekPreview failed actor-isolation checking; a targeted source fix awaits another real build. CI_VERIFIED is not set. Phase 01 stays Blocked. Production renderers remain unstarted.
+
+## First authoritative native compile and isolation fix
+[Run 38373566151](https://github.com/piyush-agrawal6/QuickPeek/actions/runs/38373566151), commit `a55bd68dcb450401f1399c2e11bb9f6a486d5694`, completed with failure. GitHub API step results confirm runner setup, repository checkout, toolchain diagnostics, Xcode project discovery, dependency resolution and repository/fixture checks succeeded. The unsigned build failed; bundle inspection/native smoke tests were skipped; diagnostic and Xcode-result uploads succeeded. The compiler output supplied by the user identifies only the PeekPreview actor-isolation error on Xcode 26.x with Swift 6 language mode; it is not a runner, package-resolution or project-discovery failure.
+
+`PreviewViewController` inherits AppKit main-actor isolation, but its unqualified `QLPreviewingController` conformance tried to satisfy a nonisolated callback requirement. The body already creating `Task { @MainActor in ... }` does not change that conformance contract. The fix explicitly annotates both the class and conformance:
+```swift
+@MainActor
+final class PreviewViewController: NSViewController, @MainActor QLPreviewingController {
+    // Existing method bodies unchanged.
+}
+```
+This uses [SE-0470 isolated conformances](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0470-isolated-conformances.md), implemented in Swift 6.2, and the approach presented in [Apple's Swift concurrency update](https://developer.apple.com/videos/play/wwdc2025/245/). The compiler can restrict use of this conformance to MainActor instead of accepting a nonisolated promise. No @preconcurrency fallback is justified by the evidence, and none is added. AppKit access/completion stay on MainActor; the detached file read captures URL only and returns a Sendable value. This does not automatically make foreign Objective-C callers hop actors: actual Quick Look callback/lifecycle behavior still requires signed Finder validation.
+
+The source now requires a **Swift 6.2+ compiler (Xcode 26.x or newer)** for this syntax while retaining **SWIFT_VERSION=6.0**, complete concurrency checking, macOS 14.0 deployment and Intel/x86_64 support. Neither CI configuration nor architecture/build flags are changed. Another native build must verify the exact SDK conformance, both architecture compilations and the previously skipped checks; no additional compiler error is established from the supplied diagnostic.
 
 `codemagic.yaml` defines the manual workflow `macos-probe-compile` for an Apple Silicon M2 Mac mini, with `xcode: latest` and `node: lts`. Actual OS, CPU, Xcode, Swift, SDK, Node, Python and commit are printed on every run. After the first successful run, record and consider pinning the exact Xcode version. Runner access/credits and repository authorization must be available in the Codemagic account. The selected instance and YAML structure follow [Codemagic configuration documentation](https://docs.codemagic.io/yaml-basic-configuration/yaml-getting-started/) and [machine types](https://docs.codemagic.io/knowledge-codemagic/machine-type/).
 
@@ -12,9 +26,9 @@ No signing certificates, profiles, secret groups, App Store integrations or dist
 | Path | Workflow | Runner | Trigger / current evidence |
 |---|---|---|---|
 | A. Codemagic M2 | `codemagic.yaml`: `macos-probe-compile` | `mac_mini_m2` | Manual; user reports compilation is queued. Configuration and queued job are untouched. |
-| B. GitHub Actions macOS | `.github/workflows/macos-probe.yml`: `macOS probe validation` | Standard GitHub-hosted `macos-26` | Manual `workflow_dispatch`, or push to `main` when project/CI paths change. First successful build evidence pending. |
+| B. GitHub Actions macOS | `.github/workflows/macos-probe.yml`: `macOS probe validation` | Standard GitHub-hosted `macos-26` | Runner operational; first build reached Swift and failed in PeekPreview. Isolation fix pending another run. |
 
-Both paths are **compile-validation only** and use the exact unsigned build command below. Neither requires Apple credentials, provisions devices, signs a release, publishes the app or tests Finder routing. Do not set **CI_VERIFIED** until at least one real macOS build succeeds and its run URL, exact commit and toolchain are recorded. Record test results separately; a green compile with failed tests does not pass Phase 01. Until that evidence exists, use **CI_PENDING / REMOTE_MAC_PENDING**.
+Both paths are **compile-validation only** and use the exact unsigned build command below. Neither requires Apple credentials, provisions devices, signs a release, publishes the app or tests Finder routing. Do not set **CI_VERIFIED** until at least one real macOS build succeeds and its run URL, exact commit and toolchain are recorded. Record test results separately; a green compile with failed tests does not pass Phase 01. Current intermediate states are **MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING**.
 
 The new GitHub workflow includes environment and repository diagnostics (`pwd`, `git status`, `ls`), native project/plist checks, package resolution, existing Node/Python tests, the shared-scheme build, bundle inspection and native Swift checks. Push filters cover `POC/`, `Config/`, `PeekProbe.xcodeproj/`, `Tests/`, `scripts/`, `.github/workflows/`, `codemagic.yaml`, `.gitattributes` and `.gitignore`. Documentation-only pushes do not start it. No concurrency cancellation policy affects the queued Codemagic job.
 

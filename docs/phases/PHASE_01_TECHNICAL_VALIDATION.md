@@ -25,6 +25,9 @@ Two independent compile-only CI paths use the shared PeekProbe scheme, which exp
 
 ## Testing Requirements
 - [x] Run local project and planning contract checks
+- [x] Confirm real GitHub macOS runner, project discovery, dependency resolution and repository checks work (run 38373566151)
+- [x] Diagnose PeekPreview Swift actor-isolation failure and implement explicit MainActor protocol conformance
+- [ ] Verify isolation fix in another real macOS build, preserving Swift 6, strict checking and Intel/x86_64 support
 - [x] Audit shared scheme, configurations, bundle identifiers and host extension dependencies for CI readiness
 - [x] Prepare Codemagic compile-only workflow, diagnostics, existing tests and unsigned inspection artifacts
 - [x] Prepare independent GitHub Actions macos-26 workflow with relevant-path main push trigger, manual dispatch and failure artifacts
@@ -61,6 +64,6 @@ Not completed. Fill with verified outcomes and evidence only after acceptance.
 ## Status
 Blocked
 
-Readiness: **CODE_COMPLETE / CI_PENDING / REMOTE_MAC_PENDING**. CODE_COMPLETE applies only to Windows-local preparation and CI configuration, not production features or validated Swift compilation. Four of ten primary tasks remain complete (40%); CI readiness detail does not inflate platform-validation progress.
+Readiness: **CODE_COMPLETE / MACOS_CI_ACTIVE / CI_BUILD_FIX_PENDING / REMOTE_MAC_PENDING**. CODE_COMPLETE applies to the prepared POC fix and infrastructure, not production features or a validated full native build. Four of ten primary tasks remain complete (40%); reaching the compiler does not pass the build gate. CI_VERIFIED is not set.
 
-BLOCK-001: Windows has no Xcode, Swift or Finder. Codemagic M2 is queued per user and unchanged; an independent GitHub Actions macOS compile path is prepared. No successful real build has been verified by this work; CI_PENDING remains. After CI passes, signed interactive Finder validation on minimum/latest macOS is still required. Record real CI evidence in CURRENT_STATE.md before setting CI_VERIFIED, then execute QUICKLOOK_TEST_PLAN.md and update ADR-001. Production renderers remain blocked; Phase 01 is not complete.
+BUG-001: GitHub run 38373566151 at a55bd68 confirms runner/project/dependency/repository stages passed and compilation reached Swift, where PeekPreview's main-actor method could not satisfy its nonisolated QLPreviewingController conformance. Both class and conformance now explicitly use MainActor (Swift 6.2+ compiler); method bodies, architectures and strict checking are unchanged. The fix awaits another macOS CI run. BLOCK-001 still applies to local Windows compilation and signed Finder testing. Codemagic remains untouched. After CI passes, minimum/latest-macOS Finder evidence and ADR-001 are still required. Production renderers remain blocked; Phase 01 is not complete.
